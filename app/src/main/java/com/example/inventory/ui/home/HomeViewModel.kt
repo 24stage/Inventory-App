@@ -17,15 +17,28 @@
 package com.example.inventory.ui.home
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.inventory.data.Item
+import kotlinx.coroutines.flow.StateFlow
+import com.example.inventory.data.ItemsRepository
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 
 /**
- * ViewModel to retrieve all items in the Room database.
+ * 仅当界面可见时，流水线才应有效。为此，请使用 SharingStarted.WhileSubscribed()。
+ * 如需配置从最后一个订阅者消失到停止共享协程之间的延迟时间（以毫秒为单位），
+ * 请将 TIMEOUT_MILLIS 传递给 SharingStarted.WhileSubscribed() 方法。
  */
-class HomeViewModel : ViewModel() {
+class HomeViewModel(itemsRepository: ItemsRepository): ViewModel(){
     companion object {
         private const val TIMEOUT_MILLIS = 5_000L
     }
+    val homeUiState: StateFlow<HomeUiState> = itemsRepository.getAllItemsStream().map { HomeUiState(it) }
+        .stateIn(scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(TIMEOUT_MILLIS),
+            initialValue = HomeUiState()
+        )
 }
 
 /**
