@@ -21,12 +21,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.example.inventory.data.Item
+import com.example.inventory.data.ItemsRepository
 import java.text.NumberFormat
 
 /**
  * ViewModel to validate and insert items in the Room database.
  */
-class ItemEntryViewModel : ViewModel() {
+class ItemEntryViewModel(private val itemsRepository: ItemsRepository) : ViewModel() {
 
     /**
      * Holds current item ui state
@@ -43,9 +44,16 @@ class ItemEntryViewModel : ViewModel() {
             ItemUiState(itemDetails = itemDetails, isEntryValid = validateInput(itemDetails))
     }
 
+//    检查 name、price 和 quantity 是否为空
     private fun validateInput(uiState: ItemDetails = itemUiState.itemDetails): Boolean {
-        return with(uiState) {
+        return with(uiState) {  //在 with 代码块内，可以直接访问 uiState 的属性
             name.isNotBlank() && price.isNotBlank() && quantity.isNotBlank()
+        }
+    }
+
+    suspend fun saveItem(){
+        if (validateInput()) {
+            itemsRepository.insertItem(itemUiState.itemDetails.toItem())
         }
     }
 }
@@ -66,9 +74,10 @@ data class ItemDetails(
 )
 
 /**
- * Extension function to convert [ItemDetails] to [Item]. If the value of [ItemDetails.price] is
- * not a valid [Double], then the price will be set to 0.0. Similarly if the value of
- * [ItemDetails.quantity] is not a valid [Int], then the quantity will be set to 0
+ *三个扩展函数
+ *ItemDetails.toItem() 扩展函数会将 ItemUiState 界面状态对象转换为 Item 实体类型。
+ * Item.toItemUiState() 扩展函数会将 Item Room 实体对象转换为 ItemUiState 界面状态类型。
+ * Item.toItemDetails() 扩展函数会将 Item Room 实体对象转换为 ItemDetails。
  */
 fun ItemDetails.toItem(): Item = Item(
     id = id,
