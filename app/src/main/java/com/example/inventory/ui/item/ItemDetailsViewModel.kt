@@ -18,13 +18,20 @@ package com.example.inventory.ui.item
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.inventory.data.ItemsRepository
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 
 /**
  * ViewModel to retrieve, update and delete an item from the [ItemsRepository]'s data source.
  */
 class ItemDetailsViewModel(
-    savedStateHandle: SavedStateHandle
+    savedStateHandle: SavedStateHandle,
+    private val itemsRepository: ItemsRepository
 ) : ViewModel() {
 
     private val itemId: Int = checkNotNull(savedStateHandle[ItemDetailsDestination.itemIdArg])
@@ -32,6 +39,17 @@ class ItemDetailsViewModel(
     companion object {
         private const val TIMEOUT_MILLIS = 5_000L
     }
+
+    val uiState: StateFlow<ItemDetailsUiState> =
+        itemsRepository.getItemStream(itemId)   //这里 getItemStream(itemId) 返回的是 Flow<Item>
+            .filterNotNull()
+            .map {  //.map { ... } 把每个 Item 转换成 ItemDetailsUiState,结果为得到 Flow<ItemDetailsUiState>
+                ItemDetailsUiState(itemDetails = it.toItemDetails())
+            }.stateIn(  //stateIn将结果最终转换成 StateFlow<ItemDetailsUiState>
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(TIMEOUT_MILLIS),
+                initialValue = ItemDetailsUiState()
+            )
 }
 
 /**
